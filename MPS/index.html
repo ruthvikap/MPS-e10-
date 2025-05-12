@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio to Sign Language</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        /* Full-Screen Splash Screen */
+        #splash-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.7s ease-in-out;
+            overflow: hidden;
+        }
+
+        #splash-screen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Hide main content initially */
+        #main-selection, #audio-page, #video-page {
+            display: none;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('/assets/images/Untitled\ design.png') no-repeat center center fixed;
+            background-size: cover;
+            text-align: center;
+            color: rgb(24, 4, 4);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .dark-mode {
+            background: url('/assets/images/darkmode.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: white;
+        }
+
+        .container {
+            width: 50%;
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+            position: relative;
+        }
+
+        .dark-mode .container {
+            background: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #555;
+            color: white;
+            transition: 0.3s;
+        }
+
+        .theme-toggle:hover {
+            background-color: #777;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #d9534f;
+            color: white;
+            transition: 0.3s;
+        }
+
+        .back-button:hover {
+            background-color: #c9302c;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            transition: 0.3s;
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+
+    <div id="splash-screen" onclick="hideSplashScreen()">
+        <img src="/assets/images/SignBuddy.png" alt="Splash Screen">
+    </div>
+
+    <div id="main-selection" class="container">
+        <h2>Select Mode</h2>
+        <button onclick="showAudioPage()">Audio to Sign Language</button>
+        <button onclick="showVideoPage()">Video to Sign Language</button>
+    </div>
+
+    <div id="audio-page" class="container">
+        <button class="back-button" onclick="goBack()">⬅ Back</button>
+        <h2>Speech to Sign Language</h2>
+        <button id="speech-toggle" onclick="toggleRecognition()">🎤 Start Listening</button>
+        <p id="output">Speech will appear here...</p>
+        <p id="listening-indicator" style="display: none; color: limegreen; font-weight: bold;">Listening...</p>
+        <p id="error-message" style="color: red; display: none;">Error: Speech recognition not supported.</p>
+        <button onclick="clearText()">Clear</button>
+    </div>
+
+    <script>
+        function hideSplashScreen() {
+            document.getElementById("splash-screen").style.opacity = "0";
+            setTimeout(() => {
+                document.getElementById("splash-screen").style.display = "none";
+                document.getElementById("main-selection").style.display = "block";
+            }, 700);
+        }
+
+        function showAudioPage() {
+            document.getElementById("main-selection").style.display = "none";
+            document.getElementById("audio-page").style.display = "block";
+        }
+
+        function showVideoPage() {
+            alert("Video page functionality to be implemented");
+        }
+
+        function goBack() {
+            document.getElementById("audio-page").style.display = "none";
+            document.getElementById("main-selection").style.display = "block";
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle("dark-mode");
+            const button = document.querySelector(".theme-toggle");
+            button.textContent = document.body.classList.contains("dark-mode") ? "☀ Light Mode" : "🌙 Dark Mode";
+        }
+
+        let recognition;
+        function toggleRecognition() {
+            if (!('webkitSpeechRecognition' in window)) {
+                document.getElementById("error-message").style.display = "block";
+                return;
+            }
+            if (!recognition) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.onresult = function(event) {
+                    document.getElementById("output").textContent = event.results[0][0].transcript;
+                };
+            }
+            if (recognition.running) {
+                recognition.stop();
+                document.getElementById("speech-toggle").textContent = "🎤 Start Listening";
+            } else {
+                recognition.start();
+                document.getElementById("speech-toggle").textContent = "🛑 Stop Listening";
+            }
+        }
+
+        function clearText() {
+    document.getElementById("output").textContent = "";
+    document.getElementById("speech-toggle").textContent = "🎤 Start Listening";
+    if (recognition && recognition.running) {
+        recognition.stop();
+    }
+}
+
+    </script>
+</body>
+</html>

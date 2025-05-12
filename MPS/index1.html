@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Sign Language Converter</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --accent: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #38b000;
+            --warning: #ffaa00;
+            --error: #d00000;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+            --border-radius: 12px;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: var(--shadow);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            transition: var(--transition);
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .app-title {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .app-subtitle {
+            font-size: 1.1rem;
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--gray-300);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 25px;
+            background-color: var(--gray-100);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--gray-300);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-300);
+        }
+
+        .result-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .speech-text {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--gray-900);
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .sign-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .word-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: var(--transition);
+        }
+
+        .word-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .word-label {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .word-container img {
+            width: 180px;
+            height: 180px;
+            border-radius: 10px;
+            object-fit: contain;
+            background-color: var(--gray-100);
+            padding: 10px;
+            border: 1px solid var(--gray-300);
+        }
+
+        .mic-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 50px;
+            font-weight: 600;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .mic-waves {
+            display: flex;
+            align-items: center;
+            height: 15px;
+            gap: 3px;
+        }
+
+        .mic-wave {
+            width: 3px;
+            height: 100%;
+            background-color: white;
+            border-radius: 3px;
+            animation: wave 1s infinite;
+        }
+
+        .mic-wave:nth-child(2) {
+            animation-delay: 0.2s;
+            height: 60%;
+        }
+
+        .mic-wave:nth-child(3) {
+            animation-delay: 0.4s;
+            height: 80%;
+        }
+
+        .mic-wave:nth-child(4) {
+            animation-delay: 0.6s;
+            height: 40%;
+        }
+
+        .mic-wave:nth-child(5) {
+            animation-delay: 0.8s;
+            height: 70%;
+        }
+
+        @keyframes wave {
+            0%, 100% {
+                transform: scaleY(1);
+            }
+            50% {
+                transform: scaleY(0.5);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(247, 37, 133, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0);
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-600);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--gray-400);
+        }
+
+        .empty-state-text {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 20px;
+            border: 4px solid var(--gray-200);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+
+            .app-title {
+                font-size: 2rem;
+            }
+
+            .word-container img {
+                width: 150px;
+                height: 150px;
+            }
+
+            .speech-text {
+                font-size: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            .control-panel {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .word-container img {
+                width: 120px;
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mic-indicator" id="mic-indicator">
+        <i class="fas fa-microphone"></i>
+        <div class="mic-waves">
+            <div class="mic-wave"></div>
+            <div class="mic-wave"></div>
+            <div class="mic-wave"></div>
+            <div class="mic-wave"></div>
+            <div class="mic-wave"></div>
+        </div>
+        Listening...
+    </div>
+
+    <div class="container">
+        <div class="app-header">
+            <h1 class="app-title">Speech to Sign Language Converter</h1>
+            <p class="app-subtitle">Speak into your microphone and see your words translated into sign language in real-time.</p>
+        </div>
+
+        <div class="control-panel">
+            <button id="start-btn" class="btn btn-primary" onclick="startRecognition()">
+                <i class="fas fa-microphone"></i>
+                Start Listening
+            </button>
+            <button id="clear-btn" class="btn btn-secondary" onclick="clearText()" style="display: none;">
+                <i class="fas fa-trash-alt"></i>
+                Clear Results
+            </button>
+        </div>
+
+        <div class="result-section">
+            <div class="result-header">
+                <h2 class="result-title">Your Speech</h2>
+                <div id="status-indicator"></div>
+            </div>
+
+            <div id="speech-text" class="speech-text">Speak into your microphone...</div>
+
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Translating to sign language...</p>
+            </div>
+
+            <div id="empty-state" class="empty-state">
+                <i class="fas fa-sign-language"></i>
+                <p class="empty-state-text">Your sign language translation will appear here</p>
+                <p>Click "Start Listening" to begin</p>
+            </div>
+
+            <div id="sign-container" class="sign-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2023 Sign Language Converter | All Rights Reserved</p>
+    </div>
+
+    <script>
+        let isListening = false;
+        let recognition;
+
+        function startRecognition() {
+            if (isListening) {
+                stopRecognition();
+                return;
+            }
+
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            // Show microphone indicator
+            document.getElementById('mic-indicator').style.display = 'flex';
+            document.getElementById('start-btn').innerHTML = '<i class="fas fa-stop"></i> Stop Listening';
+            document.getElementById('start-btn').classList.remove('btn-primary');
+            document.getElementById('start-btn').classList.add('btn-secondary');
+            document.getElementById('clear-btn').style.display = 'flex';
+
+            isListening = true;
+
+            recognition.onstart = function() {
+                console.log('Speech recognition started');
+                document.getElementById('speech-text').innerText = 'Listening...';
+                document.getElementById('empty-state').style.display = 'block';
+                document.getElementById('sign-container').style.display = 'none';
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                if (finalTranscript) {
+                    document.getElementById('speech-text').innerText = finalTranscript;
+                    sendTextToBackend(finalTranscript);
+                } else if (interimTranscript) {
+                    document.getElementById('speech-text').innerText = interimTranscript + '...';
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error', event.error);
+                stopRecognition();
+                document.getElementById('speech-text').innerText = 'Error: ' + event.error;
+            };
+
+            recognition.onend = function() {
+                if (isListening) {
+                    recognition.start();
+                } else {
+                    stopRecognition();
+                }
+            };
+
+            recognition.start();
+        }
+
+        function stopRecognition() {
+            if (recognition) {
+                recognition.stop();
+            }
+
+            isListening = false;
+            document.getElementById('mic-indicator').style.display = 'none';
+            document.getElementById('start-btn').innerHTML = '<i class="fas fa-microphone"></i> Start Listening';
+            document.getElementById('start-btn').classList.remove('btn-secondary');
+            document.getElementById('start-btn').classList.add('btn-primary');
+        }
+
+        function sendTextToBackend(text) {
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('sign-container').style.display = 'none';
+
+            fetch('/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading state
+                document.getElementById('loading').style.display = 'none';
+                displaySigns(data.signs, text);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('speech-text').innerText = 'Error processing your speech. Please try again.';
+            });
+        }
+
+        function displaySigns(signs, text) {
+            let signContainer = document.getElementById("sign-container");
+            signContainer.innerHTML = "";
+            signContainer.style.display = 'flex';
+            document.getElementById('empty-state').style.display = 'none';
+
+            let words = text.split(" ");
+            let index = 0;
+
+            words.forEach(word => {
+                let wordDiv = document.createElement("div");
+                wordDiv.classList.add("word-container");
+
+                let wordLabel = document.createElement("div");
+                wordLabel.classList.add("word-label");
+                wordLabel.textContent = word;
+
+                if (signs[index] && signs[index].endsWith(".gif")) {
+                    let img = document.createElement("img");
+                    img.src = signs[index];
+                    img.alt = word;
+                    img.loading = "lazy";
+
+                    wordDiv.appendChild(img);
+                    wordDiv.appendChild(wordLabel);
+                    index++;
+                } else {
+                    let letterContainer = document.createElement("div");
+                    letterContainer.style.display = "flex";
+                    letterContainer.style.flexDirection = "column";
+                    letterContainer.style.alignItems = "center";
+
+                    for (let i = 0; i < word.length; i++) {
+                        if (index < signs.length && signs[index]) {
+                            let img = document.createElement("img");
+                            img.src = signs[index];
+                            img.alt = word[i];
+                            img.loading = "lazy";
+
+                            letterContainer.appendChild(img);
+                            index++;
+                        }
+                    }
+
+                    wordDiv.appendChild(letterContainer);
+                    wordDiv.appendChild(wordLabel);
+                }
+
+                signContainer.appendChild(wordDiv);
+            });
+        }
+
+        function clearText() {
+            document.getElementById('speech-text').innerText = 'Speak into your microphone...';
+            document.getElementById('sign-container').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

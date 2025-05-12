@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: url('/static/background.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .container {
+            width: 50%;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #output {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        #sign-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .word-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .word-container img {
+            width: 120px; 
+            height: 120px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #video-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+            border: 2px solid #007BFF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Speech to Sign Language</h2>
+        <button id="start-btn" onclick="startRecognition()">🎤 Start Listening</button>
+        <button id="clear-btn" style="display: none;" onclick="clearText()">Clear</button>
+
+        <p><strong>Recognized Text:</strong> <span id="output">Speech will appear here...</span></p>
+        
+        <div id="sign-container"></div>
+    </div>
+
+    <div class="container">
+        <h2>Sign to Text Converter</h2>
+        <button onclick="startWebcam()">📷 Start Sign Detection</button>
+        <button onclick="captureFrame()">📸 Capture Sign</button>
+        <video id="videoElement" autoplay></video>
+        <p><strong>Detected Text:</strong> <span id="detectedText">Waiting for input...</span></p>
+    </div>
+
+    <script>
+        function startRecognition() {
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+
+            recognition.onresult = function(event) {
+                let finalTranscript = event.results[0][0].transcript;
+                document.getElementById('output').innerText = finalTranscript;
+                sendTextToBackend(finalTranscript);
+            };
+
+            recognition.start();
+        }
+
+        function sendTextToBackend(text) {
+            fetch('/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => response.json())
+            .then(data => displaySigns(data.signs, text));
+        }
+
+        function displaySigns(signs, text) {
+            let signContainer = document.getElementById("sign-container");
+            signContainer.innerHTML = "";
+
+            let words = text.split(" "); 
+            let index = 0;
+
+            words.forEach(word => {
+                let wordDiv = document.createElement("div");
+                wordDiv.classList.add("word-container");
+
+                if (signs[index].endsWith(".gif")) {
+                    let img = document.createElement("img");
+                    img.src = signs[index];
+                    img.alt = word;
+                    wordDiv.appendChild(img);
+                    index++;
+                } else {
+                    for (let i = 0; i < word.length; i++) {
+                        if (index < signs.length) {
+                            let img = document.createElement("img");
+                            img.src = signs[index];
+                            img.alt = word[i];
+                            wordDiv.appendChild(img);
+                            index++;
+                        }
+                    }
+                }
+
+                signContainer.appendChild(wordDiv);
+            });
+        }
+
+        function startWebcam() {
+            let video = document.getElementById("videoElement");
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing webcam:", err);
+                });
+        }
+
+        function captureFrame() {
+            let video = document.getElementById("videoElement");
+            let canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            let ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(blob => {
+                let formData = new FormData();
+                formData.append("image", blob);
+
+                fetch("/sign-to-text", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("detectedText").innerText = data.text;
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("Failed to recognize sign.");
+                });
+            }, "image/jpeg");
+        }
+    </script>
+</body>
+</html>
