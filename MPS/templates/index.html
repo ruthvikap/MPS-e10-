@@ -1,195 +1,344 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Language Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: url('/static/background.jpg') no-repeat center center fixed;
-            background-size: cover;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign Language App</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+    /* Splash screen full-cover setup */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: opacity 0.7s ease-in-out;
+      overflow: hidden;
+      z-index: 999;
+    }
+    #splash-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-        .container {
-            width: 50%;
-            max-width: 500px;
-            margin: 50px auto;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
+    /* Hide all pages initially */
+    #main-selection, #audio-to-sign-page, #sign-to-audio-page {
+      display: none;
+    }
 
-        button {
-            padding: 12px 24px;
-            font-size: 18px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: #007BFF;
-            color: white;
-            margin: 10px;
-        }
+    /* Background styling */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: url("{{ url_for('static', filename='assets/images/darkmode.jpg') }}") no-repeat center center fixed;
+      background-size: cover;
+      color: #1a1a1a;
+      text-align: center;
+    }
 
-        button:hover {
-            background-color: #0056b3;
-        }
+    /* Central content container */
+    .container {
+      width: 90%;
+      max-width: 800px;
+      margin: 80px auto;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-        #output {
-            margin-top: 20px;
-            font-size: 24px;
-            font-weight: bold;
-        }
+    /* Buttons styling */
+    button {
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: #fff;
+      margin: 10px;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
 
-        #sign-container {
-            margin-top: 30px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
+    /* Sign image display area */
+    #sign-display img {
+      margin: 10px;
+      width: 300px;
+      height: auto;
+      cursor: pointer;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    #sign-display img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
 
-        .word-container {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
+    /* Fullscreen modal for signs */
+    #fullscreen-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.9);
+      justify-content: center;
+      align-items: center;
+    }
+    #fullscreen-modal img {
+      max-width: 95%;
+      max-height: 95%;
+    }
+    #modal-close {
+      position: absolute;
+      top: 20px;
+      right: 40px;
+      color: #fff;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-        .word-container img {
-            width: 120px; 
-            height: 120px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
-        }
-
-        #video-container {
-            margin-top: 20px;
-            display: none;
-        }
-
-        video {
-            width: 100%;
-            border-radius: 10px;
-            border: 2px solid #007BFF;
-        }
-    </style>
+    /* Webcam view */
+    img.webcam-feed {
+      border-radius: 12px;
+      width: 100%;
+      max-width: 640px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+      margin: 20px 0;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Speech to Sign Language</h2>
-        <button id="start-btn" onclick="startRecognition()">🎤 Start Listening</button>
-        <button id="clear-btn" style="display: none;" onclick="clearText()">Clear</button>
 
-        <p><strong>Recognized Text:</strong> <span id="output">Speech will appear here...</span></p>
-        
-        <div id="sign-container"></div>
+  <div id="splash-screen" onclick="goToMainMenu()">
+    <img src="static/assets/images/SignBuddy.png" alt="Splash">
+  </div>
+
+  <div id="main-selection" class="container">
+    <h2>Select Mode</h2>
+    <button onclick="showPage('audio-to-sign-page')">🎤 Audio to Sign</button>
+    <button onclick="showPage('sign-to-audio-page')">🧏 Sign to Audio/Text</button>
+  </div>
+
+  <div id="audio-to-sign-page" class="container">
+    <button onclick="goBackToMenu()">⬅ Back</button>
+    <h2>Speech to Sign Language</h2>
+    <button id="speech-toggle" onclick="toggleRecognition()">🎙 Start Listening</button>
+    <p id="output">Speech will appear here...</p>
+    <button onclick="sendTextToSignConverter()">Convert to Sign</button>
+    <button onclick="clearText()">Clear</button>
+
+    <div style="margin-top: 20px;">
+      <label for="languageSelectAudio">Translate to:</label>
+      <select id="languageSelectAudio">
+        <option value="hi">Hindi</option>
+        <option value="ta">Tamil</option>
+        <option value="te">Telugu</option>
+        <option value="kn">Kannada</option>
+        <option value="ml">Malayalam</option>
+        <option value="gu">Gujarati</option>
+        <option value="bn">Bengali</option>
+        <option value="mr">Marathi</option>
+        <option value="pa">Punjabi</option>
+      </select>
+      <button onclick="translateOutput('audio')">🌐 Translate</button>
+      <p><strong>Translated:</strong> <span id="translatedOutputAudio">...</span></p>
     </div>
 
-    <div class="container">
-        <h2>Sign to Text Converter</h2>
-        <button onclick="startWebcam()">📷 Start Sign Detection</button>
-        <button onclick="captureFrame()">📸 Capture Sign</button>
-        <video id="videoElement" autoplay></video>
-        <p><strong>Detected Text:</strong> <span id="detectedText">Waiting for input...</span></p>
+    <div id="sign-display"></div>
+  </div>
+
+  <div id="sign-to-audio-page" class="container">
+    <button onclick="goBackToMenu()">⬅ Back</button>
+    <h2>Sign to Text (Live)</h2>
+    <img src="{{ url_for('video_feed') }}" class="webcam-feed" alt="Live Webcam Feed">
+    <p><strong>Predicted:</strong> <span id="translatedText">...</span></p>
+    <button onclick="speakPredictedText()">🔊 Speak</button>
+    <button onclick="clearPrediction()">Clear</button>
+
+    <div style="margin-top: 20px;">
+      <label for="languageSelectVideo">Translate to:</label>
+      <select id="languageSelectVideo">
+        <option value="hi">Hindi</option>
+        <option value="ta">Tamil</option>
+        <option value="te">Telugu</option>
+        <option value="kn">Kannada</option>
+        <option value="ml">Malayalam</option>
+        <option value="gu">Gujarati</option>
+        <option value="bn">Bengali</option>
+        <option value="mr">Marathi</option>
+        <option value="pa">Punjabi</option>
+      </select>
+      <button onclick="translateOutput('video')">🌐 Translate</button>
+      <p><strong>Translated:</strong> <span id="translatedOutputVideo">...</span></p>
     </div>
+  </div>
 
-    <script>
-        function startRecognition() {
-            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
+  <div id="fullscreen-modal" onclick="closeFullscreen()">
+    <span id="modal-close">&times;</span>
+    <img id="modal-image" src="" alt="Full Screen Sign">
+  </div>
 
-            recognition.onresult = function(event) {
-                let finalTranscript = event.results[0][0].transcript;
-                document.getElementById('output').innerText = finalTranscript;
-                sendTextToBackend(finalTranscript);
-            };
+  <script>
+    // Page transitions
+    function goToMainMenu() {
+      document.getElementById("splash-screen").style.display = "none";
+      document.getElementById("main-selection").style.display = "block";
+      document.getElementById("audio-to-sign-page").style.display = "none";
+      document.getElementById("sign-to-audio-page").style.display = "none";
+    }
 
-            recognition.start();
-        }
+    function showPage(id) {
+      document.querySelectorAll(".container").forEach(el => el.style.display = "none");
+      document.getElementById(id).style.display = "block";
+    }
 
-        function sendTextToBackend(text) {
-            fetch('/process', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
-            })
-            .then(response => response.json())
-            .then(data => displaySigns(data.signs, text));
-        }
+    function goBackToMenu() {
+      document.getElementById("audio-to-sign-page").style.display = "none";
+      document.getElementById("sign-to-audio-page").style.display = "none";
+      document.getElementById("main-selection").style.display = "block";
+    }
 
-        function displaySigns(signs, text) {
-            let signContainer = document.getElementById("sign-container");
-            signContainer.innerHTML = "";
+    // Speech Recognition
+    let recognition, isListening = false;
+    function toggleRecognition() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Speech recognition not supported");
+        return;
+      }
 
-            let words = text.split(" "); 
-            let index = 0;
+      if (!recognition) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.onresult = function(event) {
+          let finalTranscript = "";
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript + " ";
+            }
+          }
+          document.getElementById("output").textContent = finalTranscript.trim().toLowerCase().replace(/[.,!?;:]/g, '');
+        };
+        recognition.onend = function() {
+          isListening = false;
+          document.getElementById("speech-toggle").textContent = "🎙 Start Listening";
+        };
+      }
 
-            words.forEach(word => {
-                let wordDiv = document.createElement("div");
-                wordDiv.classList.add("word-container");
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+        document.getElementById("speech-toggle").textContent = "🛑 Stop Listening";
+      }
 
-                if (signs[index].endsWith(".gif")) {
-                    let img = document.createElement("img");
-                    img.src = signs[index];
-                    img.alt = word;
-                    wordDiv.appendChild(img);
-                    index++;
-                } else {
-                    for (let i = 0; i < word.length; i++) {
-                        if (index < signs.length) {
-                            let img = document.createElement("img");
-                            img.src = signs[index];
-                            img.alt = word[i];
-                            wordDiv.appendChild(img);
-                            index++;
-                        }
-                    }
-                }
+      isListening = !isListening;
+    }
 
-                signContainer.appendChild(wordDiv);
-            });
-        }
+    function clearText() {
+      document.getElementById("output").textContent = "";
+      document.getElementById("sign-display").innerHTML = "";
+      document.getElementById("translatedOutputAudio").textContent = "...";
+      if (recognition && isListening) {
+        recognition.stop();
+        isListening = false;
+        document.getElementById("speech-toggle").textContent = "🎙 Start Listening";
+      }
+    }
 
-        function startWebcam() {
-            let video = document.getElementById("videoElement");
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Error accessing webcam:", err);
-                });
-        }
+    function sendTextToSignConverter() {
+      const text = document.getElementById("output").textContent;
+      fetch("/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      })
+      .then(response => response.json())
+      .then(data => {
+        const signContainer = document.getElementById("sign-display");
+        signContainer.innerHTML = "";
+        data.signs.forEach(signPath => {
+          let img = document.createElement("img");
+          img.src = signPath;
+          img.onclick = () => openFullscreen(signPath);
+          signContainer.appendChild(img);
+        });
+      })
+      .catch(error => console.error("Error:", error));
+    }
 
-        function captureFrame() {
-            let video = document.getElementById("videoElement");
-            let canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            let ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    function translateOutput(page) {
+      let text = "";
+      if (page === "audio") text = document.getElementById("output").innerText;
+      if (page === "video") text = document.getElementById("translatedText").innerText;
 
-            canvas.toBlob(blob => {
-                let formData = new FormData();
-                formData.append("image", blob);
+      const lang = document.getElementById(`languageSelect${page.charAt(0).toUpperCase() + page.slice(1)}`).value;
 
-                fetch("/sign-to-text", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("detectedText").innerText = data.text;
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                    alert("Failed to recognize sign.");
-                });
-            }, "image/jpeg");
-        }
-    </script>
+      fetch("/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, to: lang })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const outId = {
+          audio: "translatedOutputAudio",
+          video: "translatedOutputVideo"
+        }[page];
+        document.getElementById(outId).innerText = data.translated_text || "Translation failed.";
+      })
+      .catch(err => {
+        console.error("Translation error:", err);
+      });
+    }
+
+    function openFullscreen(src) {
+      document.getElementById("modal-image").src = src;
+      document.getElementById("fullscreen-modal").style.display = "flex";
+    }
+
+    function closeFullscreen() {
+      document.getElementById("fullscreen-modal").style.display = "none";
+    }
+
+    const socket = io();
+    socket.on("prediction", function(data) {
+      document.getElementById("translatedText").textContent = data.text;
+    });
+
+    function speakPredictedText() {
+      const text = document.getElementById("translatedText").textContent;
+      if (text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(msg);
+      }
+    }
+
+    function clearPrediction() {
+      document.getElementById("translatedText").textContent = "";
+    }
+  </script>
 </body>
 </html>
